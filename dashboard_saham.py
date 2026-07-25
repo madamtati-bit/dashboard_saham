@@ -9,7 +9,21 @@ st.set_page_config(page_title="Dashboard Sinyal Saham IDX", layout="wide")
 st.title("📈 Dashboard Sinyal Beli/Jual Saham Indonesia")
 st.subheader(f"Update Terakhir: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')} WIB")
 
-DAFTAR_SAHAM = ["BBRI.JK", "BBCA.JK", "BMRI.JK", "BBNI.JK", "TLKM.JK", "ASII.JK", "HMSP.JK", "AKRA.JK", "ANTM.JK", "ICBP.JK"]
+# ========== DAFTAR SAHAM PILIHAN (DIPERBARUI) ==========
+DAFTAR_SAHAM = [
+    # Perbankan & Keuangan
+    "BBRI.JK", "BBCA.JK", "BMRI.JK", "BBNI.JK", "BRIS.JK", "BTPN.JK",
+    # Telekomunikasi & Infrastruktur
+    "TLKM.JK", "ISAT.JK", "EXCL.JK", "FREN.JK",
+    # Barang Konsumen & Makanan
+    "ASII.JK", "HMSP.JK", "ICBP.JK", "UNVR.JK", "MYOR.JK", "ROTI.JK",
+    # Barang Modal & Industri
+    "AKRA.JK", "SMGR.JK", "INTP.JK",
+    # Pertambangan & Energi
+    "ANTM.JK", "PTBA.JK", "ADRO.JK", "MEDC.JK", "TINS.JK",
+    # Pertanian & Properti
+    "LSIP.JK", "SGRO.JK", "PWON.JK", "CTRA.JK"
+]
 
 def hitung_indikator(df):
     # Ambil data jadi deret angka murni
