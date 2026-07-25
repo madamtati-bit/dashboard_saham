@@ -5,35 +5,43 @@ import numpy as np
 import plotly.graph_objects as go
 from datetime import datetime
 
-st.set_page_config(page_title="Dashboard Sinyal Saham IDX", layout="wide")
-st.title("📈 Dashboard Sinyal Beli/Jual Saham Indonesia")
+# ======================
+# PENGATURAN AWAL
+# ======================
+st.set_page_config(page_title="Dashboard Saham IDX Pro", layout="wide")
+st.title("📈 Dashboard Analisis Saham IDX - VERSI LENGKAP")
 st.subheader(f"Update Terakhir: {datetime.now().strftime('%d-%m-%Y %H:%M:%S')} WIB")
 
-# ========== DAFTAR SAHAM PILIHAN (DIPERBARUI) ==========
+# ======================
+# DAFTAR SAHAM (SIAP DIEDIT)
+# Anda bisa menambah/menghapus/mengganti kode di sini kapan saja
+# ======================
 DAFTAR_SAHAM = [
-    # Perbankan & Keuangan
+    # --- PERBANKAN ---
     "BBRI.JK", "BBCA.JK", "BMRI.JK", "BBNI.JK", "BRIS.JK", "BTPN.JK",
-    # Telekomunikasi & Infrastruktur
+    # --- TELEKOMUNIKASI & INFRASTRUKTUR ---
     "TLKM.JK", "ISAT.JK", "EXCL.JK", "FREN.JK",
-    # Barang Konsumen & Makanan
+    # --- BARANG KONSUMEN & MAKANAN ---
     "ASII.JK", "HMSP.JK", "ICBP.JK", "UNVR.JK", "MYOR.JK", "ROTI.JK",
-    # Barang Modal & Industri
+    # --- INDUSTRI & BAHAN BANGUNAN ---
     "AKRA.JK", "SMGR.JK", "INTP.JK",
-    # Pertambangan & Energi
+    # --- PERTAMBANGAN & ENERGI ---
     "ANTM.JK", "PTBA.JK", "ADRO.JK", "MEDC.JK", "TINS.JK",
-    # Pertanian & Properti
+    # --- PERTANIAN & PROPERTI ---
     "LSIP.JK", "SGRO.JK", "PWON.JK", "CTRA.JK"
 ]
 
+# ======================
+# FUNGSI MENGHITUNG INDIKATOR TEKNIS
+# ======================
 def hitung_indikator(df):
-    # Ambil data jadi deret angka murni
     close = np.asarray(df['Close']).ravel()
     high = np.asarray(df['High']).ravel()
     low = np.asarray(df['Low']).ravel()
     volume = np.asarray(df['Volume']).ravel()
     n = len(close)
     
-    # EMA 9 & 20 (perhitungan manual pasti angka)
+    # EMA 9 & 20
     ema9 = np.zeros(n)
     ema9[0] = close[0]
     for i in range(1, n):
@@ -84,7 +92,6 @@ def hitung_indikator(df):
     for i in range(1, n):
         signal[i] = (2/(9+1)) * macd[i] + (1 - 2/(9+1)) * signal[i-1]
     df['SIGNAL'] = signal
-    df['HISTO'] = macd - signal
     
     # Bollinger Bands
     sma20 = pd.Series(close).rolling(20).mean().fillna(0).values
@@ -110,6 +117,9 @@ def hitung_indikator(df):
     
     return df
 
+# ======================
+# FUNGSI PENENTUAN SINYAL
+# ======================
 def dapatkan_sinyal(c, e9, e20, vw, r, k, d, m, sig, vol, vola, lowb, cc):
     skor = 0
     alasan = []
@@ -119,7 +129,7 @@ def dapatkan_sinyal(c, e9, e20, vw, r, k, d, m, sig, vol, vola, lowb, cc):
     if k > d and k < 50: skor +=1; alasan.append("✅ Momentum naik")
     if m > sig: skor +=1; alasan.append("✅ MACD positif")
     if vol >= 1.5 * vola: skor +=1; alasan.append("✅ Volume tinggi")
-    if c >= lowb: skor +=1; alasan.append("✅ Aman di Bollinger")
+    if c >= lowb: skor +=1; alasan.append("✅ Aman Bollinger")
     if cc > -100: skor +=1; alasan.append("✅ CCI membaik")
 
     if skor >=7: return "🟢 BELI KUAT", skor, alasan
@@ -127,19 +137,26 @@ def dapatkan_sinyal(c, e9, e20, vw, r, k, d, m, sig, vol, vola, lowb, cc):
     elif skor >=3: return "⚪ TAHAN", skor, alasan
     else: return "🔴 JUAL/HINDARI", skor, alasan
 
-pilihan = st.sidebar.multiselect("Pilih Saham", DAFTAR_SAHAM, default=["BBRI.JK"])
-refresh = st.sidebar.button("🔄 Perbarui Data Terkini")
+# ======================
+# TAMPILAN SISI KIRI
+# ======================
+pilihan = st.sidebar.multiselect("Pilih Saham Analisis", DAFTAR_SAHAM, default=["BBRI.JK", "BBCA.JK", "BMRI.JK"])
+refresh = st.sidebar.button("🔄 Perbarui Data Pasar")
 
+# ======================
+# PROSES PENGAMBILAN DATA
+# ======================
 if refresh or 'data' not in st.session_state:
     hasil = []
-    with st.spinner("Mengambil data & menghitung indikator..."):
+    with st.spinner("Mengambil data & menghitung analisis..."):
         for kode in pilihan:
             try:
                 data = yf.download(kode, period="3mo", interval="1d", progress=False, auto_adjust=False)
                 data = data[['Open','High','Low','Close','Volume']].copy()
                 data = hitung_indikator(data)
                 terkini = data.iloc[-1]
-                # ✅ KUNCI: Ambil nilai dengan .item() langsung jadi angka
+                
+                # Ambil semua nilai
                 c = terkini['Close'].item()
                 e9 = terkini['EMA9'].item()
                 e20 = terkini['EMA20'].item()
@@ -162,7 +179,6 @@ if refresh or 'data' not in st.session_state:
                     "RSI": f"{r:.1f}",
                     "MACD": f"{m:.2f}",
                     "ATR": f"{atr:.0f}",
-                    "Skor_Nilai": int(skor_angka),
                     "Skor": f"{skor_angka}/8",
                     "SINYAL": sinyal,
                     "Keterangan": ", ".join(alasan)
@@ -171,19 +187,27 @@ if refresh or 'data' not in st.session_state:
                 st.warning(f"Gagal ambil {kode}: {str(e)}")
     st.session_state.data = pd.DataFrame(hasil)
 
-# Tampilkan tabel
+# ======================
+# TAMPILAN TABEL UTAMA
+# ======================
 if not st.session_state.data.empty:
-    st.dataframe(st.session_state.data.sort_values("Skor_Nilai", ascending=False), use_container_width=True)
+    st.subheader("📋 Hasil Analisis Semua Saham Pilihan")
+    st.dataframe(st.session_state.data.sort_values("SINYAL", ascending=False), use_container_width=True)
 else:
-    st.error("Tidak ada data. Coba tekan tombol Perbarui Data lagi.")
+    st.error("Tidak ada data. Coba tekan tombol Perbarui Data.")
 
 st.markdown("---")
+
+# ======================
+# GRAFIK & RINCIAN PER SAHAM
+# ======================
 if not st.session_state.data.empty:
-    pilih = st.selectbox("Lihat Grafik Lengkap", DAFTAR_SAHAM)
+    pilih = st.selectbox("🔍 Lihat Rincian Lengkap & Grafik", DAFTAR_SAHAM)
     datagraf = yf.download(pilih, period="3mo", interval="1d", progress=False, auto_adjust=False)
     datagraf = datagraf[['Open','High','Low','Close','Volume']].copy()
     datagraf = hitung_indikator(datagraf)
     terkini = datagraf.iloc[-1]
+    
     c = terkini['Close'].item()
     atr = terkini['ATR'].item()
     e9 = terkini['EMA9'].item()
@@ -201,9 +225,10 @@ if not st.session_state.data.empty:
 
     col1, col2 = st.columns(2)
     with col1:
-        st.subheader(f"Rincian {pilih.replace('.JK','')}")
-        st.write(f"Harga Sekarang: **Rp{c:,.0f}**")
-        st.write(f"Stop Loss Aman: Rp{c - 1.5*atr:,.0f}")
+        st.subheader(f"📊 Ringkasan: {pilih.replace('.JK','')}")
+        st.write(f"💵 Harga Sekarang: **Rp{c:,.0f}**")
+        st.write(f"🛑 Stop Loss Aman: Rp{c - 1.5*atr:,.0f}")
+        st.write(f"🎯 Target Wajar: Rp{c + 2*atr:,.0f}")
         sinyal, skor_angka, alasan = dapatkan_sinyal(c, e9, e20, vw, r, k_val, d_val, m, sig, vol, vola, lowb, cc)
         st.info(f"KESIMPULAN: {sinyal} (Nilai: {skor_angka}/8)")
         for a in alasan: st.write(a)
@@ -215,3 +240,6 @@ if not st.session_state.data.empty:
         fig.add_trace(go.Scatter(x=datagraf.index, y=datagraf['EMA20'], name='EMA 20', line=dict(color='blue', width=1.5)))
         fig.update_layout(height=400, xaxis_rangeslider_visible=False, template='plotly_white')
         st.plotly_chart(fig, use_container_width=True)
+
+st.markdown("---")
+st.caption("💡 Panduan: Gabungkan sinyal teknis ini dengan berita fundamental perusahaan untuk keputusan paling tepat.")
